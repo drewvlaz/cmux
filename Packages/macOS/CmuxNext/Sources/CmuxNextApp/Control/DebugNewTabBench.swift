@@ -68,6 +68,7 @@ enum DebugNewTabBench {
         guard case .object(var fields) = result else { return result }
         fields["tab_ms"] = tab.map { .number($0) } ?? .null
         fields["engine"] = .string(page.map { $0.showsChromium ? "cef" : "webkit" } ?? "none")
+        fields["open_probe"] = .string(services.pages.openProbe)
         fields["spare"] = .bool(services.pageHostPool.claims.count > claims && services.pageHostPool.claims.last?.spare == true)
         fields["claim"] = page?.lastClaim.map { .string($0.path.rawValue) } ?? .null
         return .object(fields)

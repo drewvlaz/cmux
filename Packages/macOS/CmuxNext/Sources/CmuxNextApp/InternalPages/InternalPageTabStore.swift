@@ -11,6 +11,7 @@ import Observation
 /// Internal page tabs and their views; provider registration is observed.
 @Observable @MainActor
 final class InternalPageTabStore {
+    @ObservationIgnored var openProbe = ""
     private var providers: [InternalPageID: any InternalPageProvider] = [:]
     private let tabsByPane = ObservedMap<String, [String]>()
     @ObservationIgnored private var views: [String: InternalPageView] = [:]
@@ -195,9 +196,7 @@ final class InternalPageTabStore {
         return view
     }
 
-    /// Opens `page` as a store tab after `pane`'s selected tab. The tab and
-    /// its view show at once (the store's provisional tab) and keep the
-    /// view when the store's tab replaces it. Selects it when `focus`. Nil
+    /// Opens `page` as a store tab after `pane`'s selected tab. Nil
     /// when the pane's daemon cannot hold page tabs. A failed creation keeps
     /// the page as an app-only tab. `key` is the provider key to use (a
     /// provider that set up its tab under it first); `created` gets the
@@ -224,6 +223,7 @@ final class InternalPageTabStore {
         // Home's dock alone, no caller's placement: made in its new column right of it in one commit, shown in this turn (as a link, #33548).
         let splits = homePlacement && onCreated == nil && pane != nil && ActionRunScope.viewChangeAllowed() && store.isLonePinnedDock(model.handle)
             && [DaemonCapability.conversationTabSplit, .pinnedDockAlone, .splitClientKeys].allSatisfy { daemon.supports($0.rawValue) }
+        openProbe = "home=\(homePlacement) created_nil=\(onCreated == nil) pane=\(pane != nil) view_change=\(ActionRunScope.viewChangeAllowed()) lone=\(store.isLonePinnedDock(model.handle)) pinned=\(store.pinnedDock(holding: model.handle) != nil) columns=\(store.screen(containing: model.handle)?.columns.count ?? -1) caps=\([DaemonCapability.conversationTabSplit, .pinnedDockAlone, .splitClientKeys].map { daemon.supports($0.rawValue) }) splits=\(splits)"
         // A foreground page in Home is selected by its destination placement, never while its
         // provisional tab still belongs to the dock: that would release OutboundTab too early.
         let selectHere = focus && !homePlacement
@@ -295,8 +295,7 @@ final class InternalPageTabStore {
         return view
     }
 
-    /// The store created provisional page tab `provisional` as `real` on
-    /// `surface` (its reply or its echo, whichever came first): the view
+    /// The store created provisional page tab `provisional` as `real` on `surface`: the view
     /// and the selection move to it.
     func storeTabCreated(_ provisional: String, as real: String, surface: SurfaceID) {
         guard provisional != real, let key = storeKeys[provisional] else { return }
