@@ -49,6 +49,8 @@ public final class ImportSuggestionsCenter {
     /// A page's start is waiting on the person's answer (one question at a time).
     @ObservationIgnored private var asking = false
     @ObservationIgnored let now: () -> Date
+    /// Settings › Import's list as last encoded (``settingsJSON``).
+    @ObservationIgnored private var settingsList: (list: ImportCardList, json: JSONValue)?
 
     init(defaults: UserDefaults = .standard, ledgerURL: URL = ImportSuggestionsCenter.defaultLedgerURL, now: @escaping () -> Date = Date.init) {
         self.defaults = defaults
@@ -192,7 +194,10 @@ public final class ImportSuggestionsCenter {
     /// Settings › Import's list for the page's host lists (`import_suggestions`), with its empty text; null while the cards are off.
     public var settingsJSON: JSONValue {
         guard isEnabled else { return .null }
-        var value = ImportCardJSON.value(list(), icons: icons, keepEmpty: true)
+        // Encoded once per list: each host-lists read encoded and decoded it again, 16 ms a Settings open (2026-11-16).
+        let list = list()
+        if settingsList?.list != list { settingsList = (list, ImportCardJSON.encoded(list, keepEmpty: true)) }
+        var value = ImportCardJSON.withIcons(settingsList?.json ?? .null, icons: icons)
         if case .object(var members) = value {
             members["empty"] = .string(ImportSuggestionStrings.settingsEmpty)
             members["scanning"] = .bool(isScanning)
