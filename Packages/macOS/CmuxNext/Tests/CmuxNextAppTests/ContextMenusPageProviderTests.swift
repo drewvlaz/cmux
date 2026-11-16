@@ -91,4 +91,21 @@ import Testing
         }
         #expect(registry.contextMenuLayouts.isEmpty)
     }
+    /// 2026-11-16, Settings opens late: every Settings open (and every host-lists watch event) built
+    /// all 35 menus' rows, layouts and JSON again on the main thread, 8-19 ms a record in 2-3 records
+    /// per open on cmux-lawrence-2 (`debug.hangs`: ContextMenuLayout.generatedOrder, menuJSON). Read
+    /// again with nothing changed, the host lists' menus come back at once; a save still shows
+    /// (aSaveArrangesTheMenuAndTheGeneratedLayoutSavesAsNone).
+    @Test func anUnchangedReadDoesNotBuildTheMenusAgain() async throws {
+        let (route, _, home) = try await Self.route()
+        defer { try? FileManager.default.removeItem(at: home) }
+        _ = route.hostJSON // the catalog and the first build
+        let clock = ContinuousClock()
+        var built = JSONValue.null
+        let second = clock.measure { built = route.hostJSON }
+        var again = JSONValue.null
+        let third = clock.measure { again = route.hostJSON }
+        #expect(again == built)
+        #expect(third * 5 < second, "an unchanged read built the menus again: \(third) after \(second)")
+    }
 }
